@@ -10,7 +10,6 @@ public class FilePath extends AbstractPath{
     public FilePath(DirectoryPath parent, String name){
         super(parent, name);
     }
-    private List<AbstractPath> childs = new ArrayList<AbstractPath>();
     public  void delete(String name){
 
     }
@@ -19,5 +18,13 @@ public class FilePath extends AbstractPath{
     }
     public  void getattr(FileStat stat){
 
+    }
+    public synchronized void delete(AbstractPath p){
+        if (getParent() == null){
+            System.out.println("Can not delete " + p.getName());
+            return ;
+        }
+        getParent().deleteChild(this);
+        setParent(null);
     }
 }

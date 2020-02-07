@@ -2,6 +2,9 @@
 *.class
 # vscode
 .vscode/
+
+#compiled
+target/
 # Log file
 *.log
 

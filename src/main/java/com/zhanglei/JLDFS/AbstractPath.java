@@ -14,7 +14,12 @@ public abstract class AbstractPath{
         this.parent = parent;
     }
 
-    public abstract void delete();
+    public synchronized void delete(){
+        if (parent != null){
+            parent.deleteChild(this);
+            parent = null;
+        }
+    }
     protected abstract AbstractPath find(String path);
     public abstract void getattr(FileStat stat);
     public void rename(String name2){

@@ -38,9 +38,11 @@ public class FilePath extends AbstractPath{
         if (!path.contains("/") && path.equals(getName())) return this;
         return null;
     }
-    public  void getattr(FileStat stat){
+    public  void getattr(FileStat stat, long uid, long gid){
         stat.st_mode.set(FileStat.S_IFREG | 0777);
         stat.st_size.set(contents.capacity());
+        stat.st_uid.set(uid);
+        stat.st_gid.set(gid);
         //stat.st_uid.set(getContext().uid.get()); //????
         //stat.st_gid.set(getContext().gid.get()); //????
     }

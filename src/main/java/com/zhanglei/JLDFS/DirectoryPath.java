@@ -19,10 +19,10 @@ public class DirectoryPath extends AbstractPath{
     /**
      * Get the file status; Note that getcontext is implemented in AbstractFuseFS.
      */
-    public  void getattr(FileStat stat){
+    public  void getattr(FileStat stat, long uid, long gid){
         stat.st_mode.set(FileStat.S_IFDIR | 0777);
-        //stat.st_uid.set(getContext().uid.get()); //????
-        //stat.st_gid.set(getContext().gid.get()); //????
+        stat.st_uid.set(uid); //????
+        stat.st_gid.set(gid); //????
 
     }
     // distinct functions
@@ -43,20 +43,29 @@ public class DirectoryPath extends AbstractPath{
     }
     protected synchronized AbstractPath find(String path){
         path = utils.strip(path);
-        if (path.contains("/")){
-            //it must be in the middel
-            String s = path.substring(0, path.indexOf('/'));
-            String t = path.substring(path.indexOf('/')+1);
+        System.out.println("Node " + this.getName() + " to find " + path);
+        if (path.isEmpty()) return this;
+        if (!(path.contains("/"))){
             for (int i = 0; i < childs.size(); ++i){
-                if (childs.get(i).getName().equals(s)){
-                    if (childs.get(i).getClass().getName() == "DirectoryPath") return childs.get(i).find(t);
+                if (childs.get(i).getName().equals(path)){
+                    System.out.println("Node " + childs.get(i).getName() + " to find " + path);
+                    return childs.get(i);
                 }
             }
         }
         else {
+            //it must be in the middel
+            String s = path.substring(0, path.indexOf('/'));
+            String t = path.substring(path.indexOf('/')+1);
+            System.out.println(s + " " + t + " " + childs.size());
             for (int i = 0; i < childs.size(); ++i){
-                if (childs.get(i).getName().equals(path)){
-                    return childs.get(i);
+                System.out.println(childs.get(i).getName());
+                if (childs.get(i).getName().equals(s)){
+                    System.out.println(childs.get(i).getClass().getName());
+                    if (childs.get(i).getClass().getName() == "com.zhanglei.JLDFS.DirectoryPath"){
+                        System.out.println("subdir" + childs.get(i).getName() + path);
+                        return childs.get(i).find(t);
+                    }
                 }
             }
         }

@@ -13,7 +13,7 @@ import ru.serce.jnrfuse.FuseStubFS;
 import ru.serce.jnrfuse.struct.FileStat;
 import ru.serce.jnrfuse.struct.FuseFileInfo;
 import ru.serce.jnrfuse.struct.Statvfs;
-
+import java.nio.file.Paths;
 import com.zhanglei.JLDFS.utils;
 
 public class JLDFS extends FuseStubFS {
@@ -23,7 +23,8 @@ public class JLDFS extends FuseStubFS {
 
     public JLDFS() {
         rootDir.add(new FilePath("File1"));
-        DirectoryPath dir1 = new DirectoryPath(rootDir, "Folder1");
+        DirectoryPath dir1 = new DirectoryPath("Folder1");
+        rootDir.add(dir1);
         dir1.add(new FilePath("File2"));
     }
 
@@ -34,7 +35,8 @@ public class JLDFS extends FuseStubFS {
     public int create(String path, @mode_t long mode, FuseFileInfo fi) {
         path = utils.strip(path);
         if (getPath(path) != null) return -ErrorCodes.EEXIST();
-        AbstractPath lastParent = rootDir.find(path.substring(0, path.lastIndexOf('/')));
+        AbstractPath lastParent = rootDir;
+        if (path.contains("/")) lastParent = rootDir.find(path.substring(0, path.lastIndexOf('/')));
         if (lastParent == null || !(lastParent instanceof DirectoryPath)) return -ErrorCodes.ENOENT();
         String t = path.substring(path.lastIndexOf('/') + 1);
         ((DirectoryPath) lastParent).mkfile(t);
@@ -44,9 +46,13 @@ public class JLDFS extends FuseStubFS {
 
     @Override
     public int getattr(String path, FileStat stat) {
+        path = utils.strip(path);
         AbstractPath target = getPath(path);
-        if (target == null) return -ErrorCodes.EEXIST();
-        target.getattr(stat);
+        System.out.println("getattr for " + path + " : " + target);
+        if (target == null) return -ErrorCodes.ENOENT();
+        long uid = getContext().uid.get();
+        long gid = getContext().gid.get();
+        target.getattr(stat, uid, gid);
         return 0;
     }
 
@@ -71,6 +77,7 @@ public class JLDFS extends FuseStubFS {
     
     @Override
     public int read(String path, Pointer buf, @size_t long size, @off_t long offset, FuseFileInfo fi){
+        path = utils.strip(path);
         AbstractPath node = getPath(path);
         if (node == null) return -ErrorCodes.ENOENT();
         if (node instanceof DirectoryPath) return -ErrorCodes.EISDIR();
@@ -80,16 +87,18 @@ public class JLDFS extends FuseStubFS {
     }
     @Override
     public int readdir(String path, Pointer buf, FuseFillDir filter, @off_t long offset, FuseFileInfo fi){
+        path = utils.strip(path);
         AbstractPath node = getPath(path);
         if (node == null) return -ErrorCodes.ENOENT();
         if (node instanceof FilePath) return -ErrorCodes.ENOTDIR();
         filter.apply(buf, ".", null, 0);
-        filter.apply(buf, ".>", null, 0);
+        filter.apply(buf, "..", null, 0);
         ((DirectoryPath) node).read(buf, filter);
         return 0;
     }
     @Override
     public int statfs(String path, Statvfs stbuf){
+        path = utils.strip(path);
         return super.statfs(path, stbuf);
     }
     @Override
@@ -120,9 +129,14 @@ public class JLDFS extends FuseStubFS {
         if (node == null) return -ErrorCodes.ENOENT();
         if (!(node instanceof DirectoryPath)) return -ErrorCodes.ENOTDIR();
         DirectoryPath Dnode = (DirectoryPath) node;
-        if (Dnode.deleteAble()) Dnode.delete();
-        else System.out.println("Delete failed : Directory not empty!");
-        return 0;
+        if (Dnode.deleteAble()){
+            Dnode.delete();
+            return 0;
+        }
+        else {
+            System.out.println("Delete failed : Directory not empty!");
+            return -ErrorCodes.ENOTEMPTY();
+        }
     }
     @Override
     public int truncate(String path, long offset) {
@@ -170,6 +184,21 @@ public class JLDFS extends FuseStubFS {
         }
         else {
             System.out.println("Machine type specification is wrong.pls check config.yaml.");
+        }
+
+        JLDFS fs = new JLDFS();
+        try {
+            String path;
+            switch (Platform.getNativePlatform().getOS()) {
+                case WINDOWS:
+                    path = "J:\\";
+                    break;
+                default:
+                    path = "/tmp/jldfs";
+            }
+            fs.mount(Paths.get(path), true, true);
+        } finally {
+            fs.umount();
         }
     }
 }

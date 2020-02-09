@@ -21,7 +21,7 @@ public abstract class AbstractPath{
         }
     }
     protected abstract AbstractPath find(String path);
-    public abstract void getattr(FileStat stat);
+    public abstract void getattr(FileStat stat, long uid, long gid);
     public void rename(String name2){
         //strip name2 including // infront and end.
         this.name = utils.strip(name2);
